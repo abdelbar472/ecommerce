@@ -1,0 +1,1353 @@
+{
+  "info": {
+    "_postman_id": "b7f1c2a4-9d3e-4c6b-8a10-order-notify-0001",
+    "name": "FK Marketplace — Auth, Seller, CX & Admin",
+    "description": "All business endpoints require a JWT Bearer token issued by the Auth Service (:8004). The token is saved to the collection variable `access_token` automatically by any Login request.\n\nSuggested flow:\n1. Auth > Register CX (customer) and Auth > Register Seller — or use the seeded Admin.\n2. Auth > Admin Login (admin@example.com / admin123) — this switches `access_token` to the admin JWT.\n3. Admin Service > Admin Dashboard (Marketplace Analytics): totals plus per-customer and per-seller analytics.\n4. Admin Service > Create Category / Create Sub-category manage the shared catalog (visible to sellers and CX).\n5. Merchant Service (seller) and Client Service (cx) mirror what those roles can do in the UI.\n\nServices: Auth :8004 · Order :8001 · Notification :8002 · Analytics :8003 · Client :8006 · Merchant :8007 · Admin :8008",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "auth_url",
+      "value": "http://localhost:8004"
+    },
+    {
+      "key": "order_url",
+      "value": "http://localhost:8001"
+    },
+    {
+      "key": "notification_url",
+      "value": "http://localhost:8002"
+    },
+    {
+      "key": "analytics_url",
+      "value": "http://localhost:8003"
+    },
+    {
+      "key": "client_url",
+      "value": "http://localhost:8006"
+    },
+    {
+      "key": "merchant_url",
+      "value": "http://localhost:8007"
+    },
+    {
+      "key": "admin_url",
+      "value": "http://localhost:8008"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "user_email",
+      "value": "alice@example.com"
+    },
+    {
+      "key": "user_password",
+      "value": "secret123"
+    },
+    {
+      "key": "client_email",
+      "value": "cx@example.com"
+    },
+    {
+      "key": "client_password",
+      "value": "secret123"
+    },
+    {
+      "key": "seller_email",
+      "value": "seller@example.com"
+    },
+    {
+      "key": "seller_password",
+      "value": "secret123"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@example.com"
+    },
+    {
+      "key": "admin_password",
+      "value": "admin123"
+    },
+    {
+      "key": "category_id",
+      "value": ""
+    },
+    {
+      "key": "subcategory_id",
+      "value": ""
+    },
+    {
+      "key": "product_id",
+      "value": ""
+    },
+    {
+      "key": "order_id",
+      "value": ""
+    },
+    {
+      "key": "notification_id",
+      "value": ""
+    },
+    {
+      "key": "created_user_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth Service",
+      "description": "Register (cx or seller) and login. Admin accounts cannot self-register — use the seeded admin@example.com / admin123, or create one with Admin Service > Create User.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_url}}/health",
+              "host": ["{{auth_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register CX (customer)",
+          "description": "Self-signup as a customer (`role = client`). Re-run with a different email if it already exists.",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{client_email}}\",\n    \"password\": \"{{client_password}}\",\n    \"full_name\": \"Cora Customer\",\n    \"role\": \"client\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/register",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Seller (merchant)",
+          "description": "Self-signup as a seller (`role = merchant`). Sellers add products with prices and see their own sales analytics.",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{seller_email}}\",\n    \"password\": \"{{seller_password}}\",\n    \"full_name\": \"Sam Seller\",\n    \"role\": \"merchant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/register",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login",
+          "description": "Logs in as the seeded admin and stores the JWT in `access_token`, so every other request in this collection (Admin Service, Analytics, ...) runs with admin rights. Account: admin@example.com / admin123.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Role is admin', function () {",
+                  "    pm.expect(body.role).to.eql('admin');",
+                  "});",
+                  "if (body && body.access_token) {",
+                  "    pm.collectionVariables.set('access_token', body.access_token);",
+                  "    console.log('Saved admin access_token for', body.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/login",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CX Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.access_token) {",
+                  "    pm.collectionVariables.set('access_token', body.access_token);",
+                  "    console.log('Saved access_token for', body.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{client_email}}\",\n    \"password\": \"{{client_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/login",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Seller Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.access_token) {",
+                  "    pm.collectionVariables.set('access_token', body.access_token);",
+                  "    console.log('Saved access_token for', body.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{seller_email}}\",\n    \"password\": \"{{seller_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/login",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login (legacy alice)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.access_token) {",
+                  "    pm.collectionVariables.set('access_token', body.access_token);",
+                  "    console.log('Saved access_token for', body.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{user_email}}\",\n    \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/login",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_url}}/auth/me",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_url}}/auth/validate",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "validate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Users (admin)",
+          "description": "Admin only. Shows every account with its role (admin / merchant / client).",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_url}}/auth/users",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create User (admin)",
+          "description": "Admin only. Creates an account with any role — handy for making another admin or a seller without self-signup. Saves the new user id to `created_user_id`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('created_user_id', body.id);",
+                  "    console.log('Saved created_user_id:', body.id, body.role);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"newadmin@example.com\",\n    \"password\": \"secret123\",\n    \"full_name\": \"Second Admin\",\n    \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/admin/users",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "admin", "users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set User Role (admin)",
+          "description": "Admin only. Promote/demote: admin, merchant (seller) or client (cx).",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"role\": \"merchant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{auth_url}}/auth/users/{{created_user_id}}/role",
+              "host": ["{{auth_url}}"],
+              "path": ["auth", "users", "{{created_user_id}}", "role"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Service",
+      "description": "Run Auth > Admin Login first. Marketplace analytics for every customer and seller, plus management of the shared categories / sub-categories.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{admin_url}}/health",
+              "host": ["{{admin_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Dashboard (Marketplace Analytics)",
+          "description": "The analytics of everything: total orders, revenue, customer and seller counts, catalog totals, plus per-customer (orders, spend) and per-seller (products, items sold, revenue) tables.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{admin_url}}/admin/dashboard",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "dashboard"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Categories",
+          "description": "Shared catalog. Add `?parent_id=none` for top-level only, or `?parent_id=<id>` for one category's sub-categories.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{admin_url}}/admin/categories",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Category",
+          "description": "Creates a top-level category in the shared catalog. Saves its id to `category_id`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('category_id', body.id);",
+                  "    console.log('Saved category_id:', body.id, body.name);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Electronics\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{admin_url}}/admin/categories",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Sub-category",
+          "description": "Creates a sub-category under `category_id` (run Create Category first). Saves its id to `subcategory_id`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('subcategory_id', body.id);",
+                  "    console.log('Saved subcategory_id:', body.id, body.name);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Phones\",\n    \"parent_id\": \"{{category_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{admin_url}}/admin/categories",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Products",
+          "description": "Admin view of every product synced/known to the admin service.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{admin_url}}/admin/products",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "products"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Audit Log",
+          "description": "User/role changes recorded by the admin service.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{admin_url}}/admin/audit?limit=100",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "audit"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Record Metric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"metric_name\": \"demo.metric\",\n    \"metric_value\": { \"value\": 1 }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{admin_url}}/admin/metrics",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "metrics"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{admin_url}}/admin/metrics?limit=50",
+              "host": ["{{admin_url}}"],
+              "path": ["admin", "metrics"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Client Service (cx)",
+      "description": "What a customer can do: browse the catalog by category / sub-category, buy, and see their own purchase history. Run Auth > CX Login first.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{client_url}}/health",
+              "host": ["{{client_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{client_url}}/client/categories",
+              "host": ["{{client_url}}"],
+              "path": ["client", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Products",
+          "description": "Optional filters: `category_id`, `subcategory_id`, `q` (search).",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{client_url}}/client/products",
+              "host": ["{{client_url}}"],
+              "path": ["client", "products"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Products (by sub-category)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{client_url}}/client/products?subcategory_id={{subcategory_id}}",
+              "host": ["{{client_url}}"],
+              "path": ["client", "products"],
+              "query": [
+                {
+                  "key": "subcategory_id",
+                  "value": "{{subcategory_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Place Order",
+          "description": "CX only (403 for sellers/admin). Uses `product_id` from Merchant > Create Product. Saves the order id to `order_id`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('order_id', body.id);",
+                  "    console.log('Saved order_id:', body.id, 'total', body.total);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"items\": [\n        { \"product_id\": \"{{product_id}}\", \"quantity\": 2 }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{client_url}}/client/orders",
+              "host": ["{{client_url}}"],
+              "path": ["client", "orders"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "My Purchase History",
+          "description": "Only the authenticated customer's own orders.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{client_url}}/client/orders",
+              "host": ["{{client_url}}"],
+              "path": ["client", "orders"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Client Dashboard",
+          "description": "Own totals: orders, amount spent, items bought, orders by status.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{client_url}}/client/dashboard",
+              "host": ["{{client_url}}"],
+              "path": ["client", "dashboard"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Merchant Service (seller)",
+      "description": "What a seller can do: manage the catalog (category + sub-category + product with price) and see their own sales analytics. Run Auth > Seller Login first.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{merchant_url}}/health",
+              "host": ["{{merchant_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{merchant_url}}/merchant/categories",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Category",
+          "description": "Sellers may add their own top-level category too. Saves id to `category_id`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('category_id', body.id);",
+                  "    console.log('Saved category_id:', body.id, body.name);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Accessories\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{merchant_url}}/merchant/categories",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Sub-category",
+          "description": "Run Create Category first. Saves id to `subcategory_id`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('subcategory_id', body.id);",
+                  "    console.log('Saved subcategory_id:', body.id, body.name);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Cases\",\n    \"parent_id\": \"{{category_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{merchant_url}}/merchant/categories",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product",
+          "description": "Seller only (403 for cx/admin). Pick category + sub-category and set the price. Run Create Sub-category first, or drop the `subcategory_id` line. Saves id to `product_id`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('product_id', body.id);",
+                  "    console.log('Saved product_id:', body.id, body.name, body.price);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Postman Demo Product\",\n    \"description\": \"Created from the Postman collection\",\n    \"price\": 49.99,\n    \"stock\": 10,\n    \"category_id\": \"{{category_id}}\",\n    \"subcategory_id\": \"{{subcategory_id}}\",\n    \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{merchant_url}}/merchant/products",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "products"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List My Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{merchant_url}}/merchant/products",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "products"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Seller Dashboard (own analytics)",
+          "description": "Sales analytics for this seller only: revenue, items sold, pending orders, orders by status, top products, recent orders.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{merchant_url}}/merchant/dashboard",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "dashboard"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "My Orders",
+          "description": "Orders that contain this seller's products.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{merchant_url}}/merchant/orders",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "orders"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status",
+          "description": "pending | confirmed | shipped | delivered | cancelled",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"confirmed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{merchant_url}}/merchant/orders/{{order_id}}/status",
+              "host": ["{{merchant_url}}"],
+              "path": ["merchant", "orders", "{{order_id}}", "status"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Order Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_url}}/health",
+              "host": ["{{order_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Order",
+          "description": "Legacy core order API (publishes `order.created` to Kafka). Prefer Client Service > Place Order for the cx flow.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "    pm.collectionVariables.set('order_id', body.id);",
+                  "    console.log('Saved order_id:', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_email\": \"alice@example.com\",\n    \"items\": [\n        { \"name\": \"Mechanical Keyboard\", \"qty\": 1, \"price\": 129.99 },\n        { \"name\": \"USB-C Cable\", \"qty\": 2, \"price\": 9.5 }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{order_url}}/orders",
+              "host": ["{{order_url}}"],
+              "path": ["orders"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_url}}/orders",
+              "host": ["{{order_url}}"],
+              "path": ["orders"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_url}}/orders/{{order_id}}",
+              "host": ["{{order_url}}"],
+              "path": ["orders", "{{order_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notification Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{notification_url}}/health",
+              "host": ["{{notification_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (Array.isArray(body) && body.length > 0) {",
+                  "    pm.collectionVariables.set('notification_id', body[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{notification_url}}/notifications",
+              "host": ["{{notification_url}}"],
+              "path": ["notifications"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Notification",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{notification_url}}/notifications/{{notification_id}}",
+              "host": ["{{notification_url}}"],
+              "path": ["notifications", "{{notification_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Analytics Service",
+      "description": "Kafka-fed aggregates (order.created events). For per-customer / per-seller marketplace analytics use Admin Service > Admin Dashboard.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{analytics_url}}/health",
+              "host": ["{{analytics_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{analytics_url}}/analytics/summary",
+              "host": ["{{analytics_url}}"],
+              "path": ["analytics", "summary"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Top Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{analytics_url}}/analytics/top-products?limit=10",
+              "host": ["{{analytics_url}}"],
+              "path": ["analytics", "top-products"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Top Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{analytics_url}}/analytics/top-customers?limit=10",
+              "host": ["{{analytics_url}}"],
+              "path": ["analytics", "top-customers"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Recent Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{analytics_url}}/analytics/events",
+              "host": ["{{analytics_url}}"],
+              "path": ["analytics", "events"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
